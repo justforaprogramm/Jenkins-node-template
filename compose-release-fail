@@ -1,0 +1,16 @@
+services:
+  jenkins-agent:
+    build: .
+    container_name: jenkins-agent
+    restart: always
+    user: "1000:1000"
+    group_add:
+      - "${DOCKER_GID}"
+    environment:
+      - JENKINS_URL=${JENKINS_URL}
+      - JENKINS_SECRET=${JENKINS_SECRET}
+      - JENKINS_AGENT_NAME=${JENKINS_AGENT_NAME}
+      - JENKINS_AGENT_WORKDIR=/home/jenkins/agent
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/jenkins/agent:/home/jenkins/agent
