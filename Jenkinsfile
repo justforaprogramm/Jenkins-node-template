@@ -11,32 +11,27 @@ pipeline {
     }
 
     stages {
-        stage('Build Docker Image') {
+        stage('Build & Push Multi-Arch (AMD64 & ARM64)') {
             steps {
-                echo "Baue das Image ${IMAGE_NAME}:${IMAGE_TAG}..."
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-            }
-        }
-
-        stage('Push to GitHub Registry') {
-            steps {
-                echo "Logge bei ghcr.io ein und pushe das Image..."
+                echo "Logge bei ghcr.io ein..."
                 // Login bei GitHub Container Registry
                 sh "echo \$GH_TOKEN | docker login ghcr.io -u justforaprogramm --password-stdin"
                 
-                // Image hochladen
-                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                echo "Baue das Image für AMD64 & ARM64 und pushe es direkt..."
+                // Ein dedizierter Builder wird erstellt, genutzt und wieder entfernt, um Konflikte zu vermeiden
+                sh """
+                    docker buildx create --use --name multi-builder || true
+                    docker buildx build --platform linux/amd64,linux/arm64 -t ${IMAGE_NAME}:${IMAGE_TAG} --push .
+                    docker buildx rm multi-builder || true
+                """
             }
         }
     }
 
     post {
         always {
-            echo "Räume auf: Lösche das lokale Image..."
-            // Löscht das gerade gebaute Image vom Host (|| true verhindert einen Abbruch, falls das Image gar nicht erst gebaut wurde)
-            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
-            
-            // Zur Sicherheit auch wieder ausloggen
+            echo "Räume auf: Logge aus Registry aus..."
+            // Zur Sicherheit wieder ausloggen
             sh "docker logout ghcr.io || true"
         }
     }
