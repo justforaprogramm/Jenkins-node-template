@@ -1,55 +1,43 @@
 pipeline {
-    agent any // Hier kannst du bei Bedarf einen spezifischen Node eintragen, auf dem Docker läuft
+    agent any // Führt die Pipeline auf einem verfügbaren Jenkins-Node aus
 
     environment {
-        // Name und Tag für dein Image
-        IMAGE_NAME = "custom-jenkins-agent"
+        // Der Name MUSS dieses Format haben: ghcr.io/<github-name>/<repo-name>
+        IMAGE_NAME = "ghcr.io/justforaprogramm/jenkins-node-template"
         IMAGE_TAG  = "latest"
+        
+        // Lädt den GitHub-Token aus dem Jenkins Credential Store
+        GH_TOKEN   = credentials('github-ghcr-token') 
     }
 
     stages {
         stage('Build Docker Image') {
             steps {
-                // Das Image wird gebaut. Eine .env Datei wird hierfür weder benötigt noch verwendet.
+                echo "Baue das Image ${IMAGE_NAME}:${IMAGE_TAG}..."
                 sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
 
-        stage('Test: Start & Stop') {
+        stage('Push to GitHub Registry') {
             steps {
-                script {
-                    // Container im Hintergrund (-d) starten. 
-                    // --rm sorgt dafür, dass er nach dem Stoppen sofort gelöscht wird.
-                    // Wir geben Dummy-Werte mit, damit der Entrypoint nicht sofort mit einem Fehler abbricht.
-                    def containerId = sh(
-                        script: """
-                            docker run -d --rm \
-                            -e JENKINS_URL=http://dummy \
-                            -e JENKINS_SECRET=dummy \
-                            -e JENKINS_AGENT_NAME=dummy \
-                            ${IMAGE_NAME}:${IMAGE_TAG}
-                        """, 
-                        returnStdout: true
-                    ).trim()
-
-                    echo "Container erfolgreich gestartet mit ID: ${containerId}"
-
-                    // 5 Sekunden warten, um zu prüfen, ob er anbleibt und nicht sofort abstürzt
-                    sleep time: 5, unit: 'SECONDS'
-
-                    // Container wieder stoppen (wird durch --rm automatisch restlos entfernt)
-                    echo "Stoppe den Container..."
-                    sh "docker stop ${containerId}"
-                }
+                echo "Logge bei ghcr.io ein und pushe das Image..."
+                // Login bei GitHub Container Registry
+                sh "echo \$GH_TOKEN | docker login ghcr.io -u justforaprogramm --password-stdin"
+                
+                // Image hochladen
+                sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
     }
 
     post {
         always {
-            echo "Pipeline beendet. Der Workspace ist sauber."
-            // Optional: Wenn du das Image nach dem Build auch löschen willst, entkommentiere die nächste Zeile:
-            // sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+            echo "Räume auf: Lösche das lokale Image..."
+            // Löscht das gerade gebaute Image vom Host (|| true verhindert einen Abbruch, falls das Image gar nicht erst gebaut wurde)
+            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+            
+            // Zur Sicherheit auch wieder ausloggen
+            sh "docker logout ghcr.io || true"
         }
     }
 }
