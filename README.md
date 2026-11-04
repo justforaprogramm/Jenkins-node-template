@@ -43,8 +43,7 @@ JENKINS_AGENT_NAME=<YOUR_AGENT_NAME>
 DOCKER_GID=<GID>
 ```
 
-**3. adjust user and build on node server
-
+**3. adjust user and build on node server**
 ```
 sudo mkdir -p /home/jenkins/agent
 sudo chown -R 1000:1000 /home/jenkins/agent
