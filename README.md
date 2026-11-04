@@ -47,5 +47,5 @@ DOCKER_GID=<GID>
 ```
 sudo mkdir -p /home/jenkins/agent
 sudo chown -R 1000:1000 /home/jenkins/agent
-docker compose up -d --build
+docker compose up -d
 ```

@@ -1,6 +1,6 @@
 services:
   jenkins-agent:
-    build: .
+    image: ghcr.io/justforaprogramm/jenkins-node-template:latest
     container_name: jenkins-agent
     restart: always
     user: "1000:1000"
